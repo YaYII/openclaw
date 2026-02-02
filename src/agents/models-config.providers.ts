@@ -32,6 +32,18 @@ const MINIMAX_API_COST = {
   cacheWrite: 10,
 };
 
+// NVIDIA NIM API Configuration
+const NVIDIA_API_BASE_URL = "https://integrate.api.nvidia.com/v1";
+const NVIDIA_DEFAULT_MODEL_ID = "moonshotai/kimi-k2.5";
+const NVIDIA_DEFAULT_CONTEXT_WINDOW = 256000;
+const NVIDIA_DEFAULT_MAX_TOKENS = 16384;
+const NVIDIA_DEFAULT_COST = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+};
+
 const XIAOMI_BASE_URL = "https://api.xiaomimimo.com/anthropic";
 export const XIAOMI_DEFAULT_MODEL_ID = "mimo-v2-flash";
 const XIAOMI_DEFAULT_CONTEXT_WINDOW = 262144;
@@ -260,6 +272,24 @@ export function normalizeProviders(params: {
   return mutated ? next : providers;
 }
 
+function buildNvidiaProvider(): ProviderConfig {
+  return {
+    baseUrl: NVIDIA_API_BASE_URL,
+    api: "openai-completions",
+    models: [
+      {
+        id: NVIDIA_DEFAULT_MODEL_ID,
+        name: "Kimi K2.5 (NVIDIA)",
+        reasoning: true,
+        input: ["text"],
+        cost: NVIDIA_DEFAULT_COST,
+        contextWindow: NVIDIA_DEFAULT_CONTEXT_WINDOW,
+        maxTokens: NVIDIA_DEFAULT_MAX_TOKENS,
+      },
+    ],
+  };
+}
+
 function buildMinimaxProvider(): ProviderConfig {
   return {
     baseUrl: MINIMAX_API_BASE_URL,
@@ -401,6 +431,13 @@ export async function resolveImplicitProviders(params: {
   const authStore = ensureAuthProfileStore(params.agentDir, {
     allowKeychainPrompt: false,
   });
+
+  const nvidiaKey =
+    resolveEnvApiKeyVarName("nvidia") ??
+    resolveApiKeyFromProfiles({ provider: "nvidia", store: authStore });
+  if (nvidiaKey) {
+    providers.nvidia = { ...buildNvidiaProvider(), apiKey: nvidiaKey };
+  }
 
   const minimaxKey =
     resolveEnvApiKeyVarName("minimax") ??
